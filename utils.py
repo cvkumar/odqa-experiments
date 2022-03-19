@@ -1,3 +1,7 @@
+import string
+import re
+
+
 def normalize_answer(my_string):
     """Lower text and remove punctuation, articles and extra whitespace."""
 
