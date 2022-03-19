@@ -11,6 +11,7 @@ import re
 import json
 import os
 import argparse
+from bert_score import score
 
 
 ANNOTATIONS = [
@@ -131,7 +132,7 @@ def _get_scores(answers, refs, fn):
     ]
 
 
-def get_scores(predictions, references, annotations, annotation_labels=None):
+def get_scores(predictions, references, annotations, annotation_labels=None, get_bert_score=False):
     predictions_map = {p["id"]: p for p in predictions}
     references_map = {r["id"]: r for r in references}
     annotations_map = {a["id"]: a for a in annotations}
@@ -156,11 +157,19 @@ def get_scores(predictions, references, annotations, annotation_labels=None):
         ]
         preds = [predictions_map[idd]["prediction"] for idd in annotation_ids]
         refs = [references_map[idd]["references"] for idd in annotation_ids]
+        
+        if get_bert_score:
+            P, R, F1 = score(preds, refs, lang='en', verbose=True, rescale_with_baseline=True)
+            bert_score = sum(F1) / len(F1)
+        else:
+            bert_score = "NA"
+
         em = _get_scores(preds, refs, exact_match_score)
         f = _get_scores(preds, refs, f1_score)
         results[annotation_label] = {
             "exact_match": 100 * sum(em) / len(em),
             "f1_score": 100 * sum(f) / len(f),
+            "bert_score": bert_score,
             "n_examples": len(annotation_ids),
         }
     return results
@@ -171,6 +180,7 @@ def _print_score(label, results_dict):
     print("Label       :", label)
     print("N examples  : ", results_dict["n_examples"])
     print("Exact Match : ", results_dict["exact_match"])
+    print("Bert Score : ", results_dict["bert_score"])
     # print('F1 score    : ', results_dict['f1_score'])
 
 
