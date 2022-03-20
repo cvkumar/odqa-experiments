@@ -14,6 +14,7 @@ from nq_evaluate import (
 class QAModel(object):
     def __init__(self) -> None:
         self.scores = None
+        self.predictions = None
 
     def _get_predictions(self, nq_test: pd.DataFrame):
         predictions = []
@@ -36,7 +37,13 @@ class QAModel(object):
     def predict_answer(self, text: str) -> str:
         raise NotImplementedError("Please Implement this method")
 
-    def evaluate(self, dataset: str = "nq", nrows: Optional[int] = None):
+    def evaluate(
+        self,
+        dataset: str = "nq",
+        nrows: Optional[int] = None,
+        get_bert_score=False,
+        get_new_predictions=True,
+    ):
         if dataset == "nq":
             annotations = read_annotations("data/nq-annotations.jsonl")
             references = read_references("data/nq-test.qa.csv")
@@ -49,9 +56,12 @@ class QAModel(object):
                 references = references[:nrows]
                 nq_test = nq_test[:nrows]
 
-        predictions = self._get_predictions(nq_test)
+        if get_new_predictions:
+            self.predictions = self._get_predictions(nq_test)
 
-        scores = get_scores(predictions, references, annotations, get_bert_score=True)
+        scores = get_scores(
+            self.predictions, references, annotations, get_bert_score=get_bert_score
+        )
         for label in ANNOTATIONS:
             _print_score(label, scores[label])
         self.scores = scores
