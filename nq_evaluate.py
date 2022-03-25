@@ -11,7 +11,13 @@ import re
 import json
 import os
 import argparse
+from typing import List
 from bert_score import score
+
+from nltk import word_tokenize
+from nltk.translate import meteor
+
+# from torch import R
 
 
 ANNOTATIONS = [
@@ -132,7 +138,22 @@ def _get_scores(answers, refs, fn):
     ]
 
 
-def get_scores(predictions, references, annotations, annotation_labels=None, get_bert_score=False):
+def compute_meteor_score(predictions: list, references: List[list]) -> float:
+    result = [
+        meteor(
+            references=[word_tokenize(ref) for ref in refs],
+            hypothesis=word_tokenize(prediction),
+        )
+        for prediction, refs in zip(predictions, references)
+    ]
+    if not result:
+        return 0
+    return sum(result) / len(result)
+
+
+def get_scores(
+    predictions, references, annotations, annotation_labels=None, get_bert_score=False
+):
     predictions_map = {p["id"]: p for p in predictions}
     references_map = {r["id"]: r for r in references}
     annotations_map = {a["id"]: a for a in annotations}
@@ -157,19 +178,27 @@ def get_scores(predictions, references, annotations, annotation_labels=None, get
         ]
         preds = [predictions_map[idd]["prediction"] for idd in annotation_ids]
         refs = [references_map[idd]["references"] for idd in annotation_ids]
-        
+
+        if not preds and not refs:
+            continue
+
         if get_bert_score:
-            P, R, F1 = score(preds, refs, lang='en', verbose=True, rescale_with_baseline=True)
+            P, R, F1 = score(
+                preds, refs, lang="en", verbose=False, rescale_with_baseline=True
+            )
             bert_score = sum(F1) / len(F1)
         else:
             bert_score = "NA"
 
         em = _get_scores(preds, refs, exact_match_score)
         f = _get_scores(preds, refs, f1_score)
+        meteor = compute_meteor_score(predictions=preds, references=refs)
+        
         results[annotation_label] = {
             "exact_match": 100 * sum(em) / len(em),
             "f1_score": 100 * sum(f) / len(f),
             "bert_score": bert_score,
+            "meteor_score": meteor,
             "n_examples": len(annotation_ids),
         }
     return results
@@ -181,6 +210,7 @@ def _print_score(label, results_dict):
     print("N examples  : ", results_dict["n_examples"])
     print("Exact Match : ", results_dict["exact_match"])
     print("Bert Score : ", results_dict["bert_score"])
+    print("Meteor Score : ", results_dict["meteor_score"])
     # print('F1 score    : ', results_dict['f1_score'])
 
 
@@ -212,18 +242,36 @@ def main(predictions_path, dataset_name):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--predictions",
-        help="path to predictions txt file, one answer per line. "
-        "Answer order should follow the order in data/{dataset}-test.qa.csv",
-        type=str,
+    pass
+
+    # result = meteor(
+    #     references=[
+    #         word_tokenize("The candidate has no alignment to any of the references"),
+    #         word_tokenize("Mary loves John"),
+    #     ],
+    #     hypothesis=word_tokenize("John loves Mary"),
+    # )
+    result = compute_meteor_score(
+        predictions=["Caleb likes going to school sometimes", "hi my name egg"],
+        references=[
+            ["caleb wants to go to school", "hes name egg"],
+            ["caleb wants to go to school", "hes name egg"],
+        ],
     )
-    parser.add_argument(
-        "--dataset_name",
-        choices=["naturalquestions", "triviaqa", "webquestions"],
-        type=str,
-        help="name of datset to evaluate on",
-    )
-    args = parser.parse_args()
-    main(args.predictions, args.dataset_name)
+    print(result)
+
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument(
+    #     "--predictions",
+    #     help="path to predictions txt file, one answer per line. "
+    #     "Answer order should follow the order in data/{dataset}-test.qa.csv",
+    #     type=str,
+    # )
+    # parser.add_argument(
+    #     "--dataset_name",
+    #     choices=["naturalquestions", "triviaqa", "webquestions"],
+    #     type=str,
+    #     help="name of datset to evaluate on",
+    # )
+    # args = parser.parse_args()
+    # main(args.predictions, args.dataset_name)

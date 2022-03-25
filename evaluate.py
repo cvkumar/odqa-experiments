@@ -10,6 +10,14 @@ from nq_evaluate import (
     ANNOTATIONS,
 )
 
+from bert_score import score
+
+
+class QADataset:
+    nq = "nq"
+    triviaqa = "triviaqa"
+    webquestion = "webquestions"
+
 
 class QAModel(object):
     def __init__(self) -> None:
@@ -39,25 +47,24 @@ class QAModel(object):
 
     def evaluate(
         self,
-        dataset: str = "nq",
+        dataset: str = QADataset.nq,
         nrows: Optional[int] = None,
         get_bert_score=False,
         get_new_predictions=True,
     ):
-        if dataset == "nq":
-            annotations = read_annotations("data/nq-annotations.jsonl")
-            references = read_references("data/nq-test.qa.csv")
-            nq_test = pd.read_csv(
-                "data/nq-test.qa.csv", sep="\t", names=["question", "answers"]
-            )
+        annotations = read_annotations(f"data/{dataset}-annotations.jsonl")
+        references = read_references(f"data/{dataset}-test.qa.csv")
+        test_dataset = pd.read_csv(
+            f"data/{dataset}-test.qa.csv", sep="\t", names=["question", "answers"]
+        )
 
-            if nrows:
-                annotations = annotations[:nrows]
-                references = references[:nrows]
-                nq_test = nq_test[:nrows]
+        if nrows:
+            annotations = annotations[:nrows]
+            references = references[:nrows]
+            test_dataset = test_dataset[:nrows]
 
         if get_new_predictions:
-            self.predictions = self._get_predictions(nq_test)
+            self.predictions = self._get_predictions(test_dataset)
 
         scores = get_scores(
             self.predictions, references, annotations, get_bert_score=get_bert_score
@@ -68,8 +75,25 @@ class QAModel(object):
 
 
 if __name__ == "__main__":
-    predictions = [{"id": 1, "prediction": "duck"}]
-    references = [{"id": 1, "references": ["duck", "cat"]}]
-    annotations = [{"id": 1, "labels": ["total", "answer_overlap"]}]
+    predictions = [{"id": 1, "prediction": "duck"}, {"id": 2, "prediction": "egg"}]
+    references = [
+        {"id": 1, "references": ["duck", "cat"]},
+        {"id": 2, "references": ["egg", "lamb"]},
+    ]
+    annotations = [
+        {"id": 1, "labels": ["total", "answer_overlap"]},
+        {"id": 2, "labels": ["total", "answer_overlap"]},
+    ]
 
-    get_scores(predictions=predictions, references=references, annotations=annotations)
+    results = get_scores(
+        predictions=predictions,
+        references=references,
+        annotations=annotations,
+        get_bert_score=True,
+    )
+    for label in ANNOTATIONS:
+        if label in results:
+            _print_score(label, results[label])
+    # result = score(["test123"], ["test123"], lang="en", verbose=True, rescale_with_baseline=True, model_type="microsoft/deberta-xlarge-mnli")
+
+    # print(result)
