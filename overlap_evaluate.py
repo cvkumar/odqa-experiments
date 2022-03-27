@@ -32,7 +32,7 @@ ANNOTATIONS = [
 DIRNAME = os.path.dirname(os.path.abspath(__file__))
 REFERENCE_PATHS = {
     "triviaqa": os.path.join(DIRNAME, "data/triviaqa-test.qa.csv"),
-    "naturalquestions": os.path.join(DIRNAME, "data/nq-test.q   a.csv"),
+    "naturalquestions": os.path.join(DIRNAME, "data/nq-test.qa.csv"),
     "webquestions": os.path.join(DIRNAME, "data/webquestions-test.qa.csv"),
 }
 ANNOTATION_PATHS = {
@@ -206,7 +206,7 @@ def get_scores(
 
 def _print_score(label, results_dict):
     print("-" * 50)
-    print("Label       :", label)
+    print("Label :", label)
     print("N examples  : ", results_dict["n_examples"])
     print("Exact Match : ", results_dict["exact_match"])
     print("Bert Score : ", results_dict["bert_score"])

@@ -2,7 +2,7 @@ from typing import Optional
 import pandas as pd
 import transformers
 import time
-from nq_evaluate import (
+from overlap_evaluate import (
     _print_score,
     get_scores,
     read_references,
