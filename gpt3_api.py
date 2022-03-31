@@ -16,7 +16,7 @@ API_KEY = "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"
 
 # requests.post()
 
-openai.api_key = "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"
+openai.api_key = "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"
 
 # list engines
 # engines = openai.Engine.list()
