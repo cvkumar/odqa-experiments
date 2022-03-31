@@ -1,9 +1,11 @@
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+from transformers import RagTokenizer, RagRetriever, RagTokenForGeneration
 
-t5_qa_model = AutoModelForSeq2SeqLM.from_pretrained("google/t5-11b-ssm-wq")
-t5_tok = AutoTokenizer.from_pretrained("google/t5-11b-ssm-wq")
+tokenizer = RagTokenizer.from_pretrained("facebook/rag-token-nq")
+retriever = RagRetriever.from_pretrained("facebook/rag-token-nq", index_name="exact", use_dummy_dataset=True)
+model = RagTokenForGeneration.from_pretrained("facebook/rag-token-nq", retriever=retriever)
 
-input_ids = t5_tok("When was Franklin D. Roosevelt born?", return_tensors="pt").input_ids
-gen_output = t5_qa_model.generate(input_ids)[0]
+input_dict = tokenizer.prepare_seq2seq_batch("who holds the record in 100m freestyle", return_tensors="pt") 
 
-print(t5_tok.decode(gen_output, skip_special_tokens=True))
+generated = model.generate(input_ids=input_dict["input_ids"]) 
+print(tokenizer.batch_decode(generated, skip_special_tokens=True)[0]) 
+
