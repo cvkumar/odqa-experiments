@@ -11,3 +11,4 @@ nltk==3.7
 datasets==2.0.0
 faiss-cpu==1.7.2
 openai==0.16.0
+sklearn==0.0

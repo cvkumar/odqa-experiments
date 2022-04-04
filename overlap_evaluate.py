@@ -148,9 +148,10 @@ def compute_meteor_score(predictions: list, references: List[list]) -> float:
     ]
     if not result:
         return 0
-    return sum(result) / len(result)
+    return result
 
 
+# TODO: build caching mechanism
 def get_scores(
     predictions, references, annotations, annotation_labels=None, get_bert_score=False
 ):
@@ -169,8 +170,9 @@ def get_scores(
 
     annotation_labels = ANNOTATIONS if annotation_labels is None else annotation_labels
 
-    results = {}
+    scores_per_label = {}
     for annotation_label in annotation_labels:
+        print(f"Scoring annotation label: {annotation_label}")
         annotation_ids = [
             annotation["id"]
             for annotation in annotations
@@ -183,25 +185,45 @@ def get_scores(
             continue
 
         if get_bert_score:
-            P, R, F1 = score(
+            P, R, all_bert_scores = score(
                 preds, refs, lang="en", verbose=False, rescale_with_baseline=True
             )
-            bert_score = sum(F1) / len(F1)
+            
+            all_bert_scores = [round(float(score), 5) for score in all_bert_scores]
+            bert_score = sum(all_bert_scores) / len(all_bert_scores)
         else:
             bert_score = "NA"
 
-        em = _get_scores(preds, refs, exact_match_score)
-        f = _get_scores(preds, refs, f1_score)
-        meteor = compute_meteor_score(predictions=preds, references=refs)
-        
-        results[annotation_label] = {
-            "exact_match": 100 * sum(em) / len(em),
-            "f1_score": 100 * sum(f) / len(f),
+        all_em = _get_scores(preds, refs, exact_match_score)
+        exact_match = 100 * sum(all_em) / len(all_em)
+
+        all_f1 = _get_scores(preds, refs, f1_score)
+        f1 = 100 * sum(all_f1) / len(all_f1)
+
+        all_meteor = compute_meteor_score(predictions=preds, references=refs)
+        meteor_score = sum(all_meteor) / len(all_meteor)
+
+        if annotation_label == "total":
+            all_scores = []
+            for i in range(len(annotation_ids)):
+                all_scores.append(
+                    {
+                        "exact_match": all_em[i],
+                        "f1_score": all_f1[i],
+                        "bert_score": all_bert_scores[i],
+                        "meteor_score": all_meteor[i],
+                        "annotation_id": annotation_ids[i],
+                    }
+                )
+
+        scores_per_label[annotation_label] = {
+            "exact_match": exact_match,
+            "f1_score": f1,
             "bert_score": bert_score,
-            "meteor_score": meteor,
+            "meteor_score": meteor_score,
             "n_examples": len(annotation_ids),
         }
-    return results
+    return scores_per_label, all_scores
 
 
 def _print_score(label, results_dict):
@@ -218,7 +240,7 @@ def _main(predictions_path, references_path, annoations_path):
     predictions = read_predictions(predictions_path)
     references = read_references(references_path)
     annotations = read_annotations(annoations_path)
-    scores = get_scores(predictions, references, annotations)
+    scores, _ = get_scores(predictions, references, annotations)
     for label in ANNOTATIONS:
         _print_score(label, scores[label])
 
