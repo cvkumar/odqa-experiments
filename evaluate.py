@@ -110,9 +110,6 @@ class QAModel(object):
             )
 
         scores_per_label["no_overlap"] = self.compute_no_overlap_score(saved_results)
-        scores_per_label[
-            "answer_overlap_only"
-        ] = self.compute_answer_overlap_only_scores(saved_results)
         self.scores_per_label = scores_per_label
 
         return saved_results, scores_per_label
